@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What was she doing?</title>
+<style>
+  :root{
+    --wall:#1d2b36;
+    --wall-soft:#263a48;
+    --dirty:#5c6670;
+    --dirty-ink:#aeb7bf;
+    --clean:#3f9d6b;
+    --clean-soft:#2f7b53;
+    --paper:#f2efe6;
+    --ink:#16212a;
+    --gone:#404c56;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;margin:0;}
+  body{
+    background:var(--wall);
+    color:var(--paper);
+    font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",Verdana,sans-serif;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:2vh 2vw;
+    touch-action:manipulation;
+  }
+  #app{width:100%;max-width:1180px;}
+
+  /* ---------- house ---------- */
+  .house{
+    border:6px solid var(--paper);
+    border-radius:10px;
+    padding:14px;
+    background:var(--wall-soft);
+  }
+  .roof{
+    width:0;height:0;margin:0 auto -6px;
+    border-left:  min(46vw,560px) solid transparent;
+    border-right: min(46vw,560px) solid transparent;
+    border-bottom:90px solid var(--paper);
+  }
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    grid-template-rows:repeat(2,1fr);
+    gap:14px;
+  }
+  .room{
+    background:var(--dirty);
+    color:var(--dirty-ink);
+    border:4px solid #0f1a22;
+    border-radius:8px;
+    min-height:26vh;
+    display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    gap:6px;
+    cursor:pointer;
+    font-size:clamp(28px,3.4vw,46px);
+    font-weight:700;
+    letter-spacing:.06em;
+    transition:background .15s ease,color .15s ease;
+  }
+  .room .icon{font-size:clamp(40px,5vw,72px);filter:grayscale(1) opacity(.55);}
+  .room .tick{font-size:clamp(30px,3.6vw,52px);height:1.1em;}
+  .room.clean{
+    background:var(--clean);
+    color:#fff;
+    border-color:var(--clean-soft);
+    cursor:default;
+  }
+  .room.clean .icon{filter:none;}
+  .room:focus-visible{outline:5px solid #ffd166;outline-offset:3px;}
+
+  /* ---------- question ---------- */
+  .q-head{
+    display:flex;align-items:baseline;gap:18px;
+    margin-bottom:3vh;flex-wrap:wrap;
+  }
+  .q-room{
+    font-size:clamp(26px,3vw,40px);
+    background:var(--paper);color:var(--ink);
+    padding:6px 20px;border-radius:6px;font-weight:700;
+  }
+  .q-text{
+    font-size:clamp(40px,5.6vw,78px);
+    font-weight:700;line-height:1.1;margin:0;
+  }
+  .options{display:flex;flex-direction:column;gap:18px;}
+  .opt{
+    font-family:inherit;
+    font-size:clamp(32px,4.4vw,62px);
+    font-weight:600;
+    text-align:left;
+    padding:18px 28px;
+    border:4px solid var(--paper);
+    border-radius:8px;
+    background:transparent;
+    color:var(--paper);
+    cursor:pointer;
+    transition:background .12s ease,color .12s ease,border-color .12s ease;
+  }
+  .opt:focus-visible{outline:5px solid #ffd166;outline-offset:3px;}
+  .opt.right{background:var(--clean);border-color:var(--clean);color:#fff;}
+  .opt.wrong{background:var(--gone);border-color:var(--gone);color:#7c8894;cursor:default;}
+  .opt.hide{display:none;}
+  .zh{
+    margin-top:3vh;
+    font-size:clamp(34px,4.4vw,60px);
+    font-weight:700;
+    color:#9fe3bd;
+  }
+  .back{
+    margin-top:4vh;
+    font-family:inherit;font-size:clamp(20px,2vw,28px);
+    background:transparent;color:var(--dirty-ink);
+    border:3px solid var(--dirty);border-radius:6px;
+    padding:8px 22px;cursor:pointer;
+  }
+
+  /* ---------- done ---------- */
+  .done-title{
+    font-size:clamp(56px,9vw,130px);
+    margin:0 0 3vh;font-weight:800;color:#9fe3bd;
+  }
+  .done-list{list-style:none;padding:0;margin:0;}
+  .done-list li{
+    display:flex;gap:18px;align-items:baseline;flex-wrap:wrap;
+    font-size:clamp(24px,2.9vw,40px);
+    padding:10px 0;
+    border-bottom:2px solid var(--wall-soft);
+  }
+  .done-list .en{font-weight:600;}
+  .done-list .cn{color:#9aa7b2;}
+  /* 直式平板：改成兩欄三列，格子不會變得又窄又高 */
+  @media (orientation:portrait){
+    .grid{
+      grid-template-columns:repeat(2,1fr);
+      grid-template-rows:repeat(3,1fr);
+    }
+    .room{min-height:18vh;}
+    .roof{
+      border-left-width:min(44vw,420px);
+      border-right-width:min(44vw,420px);
+      border-bottom-width:70px;
+    }
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+const DATA = [
+  { room: "客廳", verb: "sweeping", object: "the floor", zh: "掃地" },
+  { room: "樓梯", verb: "mopping", object: "the stairs", zh: "拖樓梯" },
+  { room: "房間", verb: "wiping", object: "the window", zh: "擦窗戶" },
+  { room: "陽台", verb: "hanging", object: "the clothes", zh: "曬衣服" },
+  { room: "廚房", verb: "doing", object: "the dishes", zh: "洗碗" },
+  { room: "後院", verb: "feeding", object: "the pet", zh: "餵寵物" }
+];
+
+const ICONS = ["🛋️","🪜","🛏️","🌤️","🍳","🐾"];
+
+const app = document.getElementById("app");
+const clean = DATA.map(() => false);
+let locked = false;
+
+function shuffle(a){
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+function sentence(verb, object){
+  return "She was " + verb + " " + object + ".";
+}
+
+function buildOptions(idx){
+  const right = {verb:DATA[idx].verb, object:DATA[idx].object, ok:true};
+  const others = DATA.filter((_,j)=>j!==idx);
+  const opts = [right];
+  let guard = 0;
+  while(opts.length < 3 && guard < 500){
+    guard++;
+    const v = others[Math.floor(Math.random()*others.length)].verb;
+    const o = others[Math.floor(Math.random()*others.length)].object;
+    if(opts.some(x => x.verb===v && x.object===o)) continue;
+    opts.push({verb:v, object:o, ok:false});
+  }
+  return shuffle(opts);
+}
+
+function renderHouse(){
+  locked = false;
+  app.innerHTML = "";
+
+  const roof = document.createElement("div");
+  roof.className = "roof";
+  app.appendChild(roof);
+
+  const house = document.createElement("div");
+  house.className = "house";
+  const grid = document.createElement("div");
+  grid.className = "grid";
+
+  DATA.forEach((item, i) => {
+    const cell = document.createElement("button");
+    cell.type = "button";
+    cell.className = "room" + (clean[i] ? " clean" : "");
+    cell.innerHTML =
+      '<div class="icon">' + ICONS[i] + '</div>' +
+      '<div>' + item.room + '</div>' +
+      '<div class="tick">' + (clean[i] ? "✓" : "") + '</div>';
+    if(clean[i]){
+      cell.disabled = true;
+    }else{
+      cell.addEventListener("click", () => renderRoom(i));
+    }
+    grid.appendChild(cell);
+  });
+
+  house.appendChild(grid);
+  app.appendChild(house);
+}
+
+function renderRoom(idx){
+  app.innerHTML = "";
+
+  const head = document.createElement("div");
+  head.className = "q-head";
+  const tag = document.createElement("div");
+  tag.className = "q-room";
+  tag.textContent = ICONS[idx] + " " + DATA[idx].room;
+  const q = document.createElement("h1");
+  q.className = "q-text";
+  q.textContent = "What was she doing?";
+  head.appendChild(tag);
+  head.appendChild(q);
+  app.appendChild(head);
+
+  const box = document.createElement("div");
+  box.className = "options";
+  const zh = document.createElement("div");
+  zh.className = "zh";
+
+  buildOptions(idx).forEach(opt => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "opt";
+    b.textContent = sentence(opt.verb, opt.object);
+    b.addEventListener("click", () => {
+      if(b.classList.contains("wrong")) return;
+      if(opt.ok){
+        b.classList.add("right");
+        b.textContent = "✓  " + b.textContent;
+        zh.textContent = DATA[idx].zh;
+        box.querySelectorAll(".opt").forEach(x => { if(x!==b) x.disabled = true; });
+        clean[idx] = true;
+        setTimeout(() => {
+          if(clean.every(Boolean)) renderDone();
+          else renderHouse();
+        }, 2000);
+      }else{
+        b.classList.add("wrong");
+        b.disabled = true;
+        setTimeout(() => b.classList.add("hide"), 450);
+      }
+    });
+    box.appendChild(b);
+  });
+
+  app.appendChild(box);
+  app.appendChild(zh);
+
+  const back = document.createElement("button");
+  back.type = "button";
+  back.className = "back";
+  back.textContent = "← 回到房子";
+  back.addEventListener("click", renderHouse);
+  app.appendChild(back);
+}
+
+function renderDone(){
+  app.innerHTML = "";
+  const h = document.createElement("h1");
+  h.className = "done-title";
+  h.textContent = "Good job!";
+  app.appendChild(h);
+
+  const ul = document.createElement("ul");
+  ul.className = "done-list";
+  DATA.forEach((item, i) => {
+    const li = document.createElement("li");
+    li.innerHTML =
+      '<span>' + ICONS[i] + '</span>' +
+      '<span class="en">' + sentence(item.verb, item.object) + '</span>' +
+      '<span class="cn">' + item.room + "｜" + item.zh + '</span>';
+    ul.appendChild(li);
+  });
+  app.appendChild(ul);
+}
+
+renderHouse();
+</script>
+</body>
+</html>
